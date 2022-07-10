@@ -54,7 +54,6 @@ function install_service () {
     echo "Creating new systemd service"
     SUBDOMAIN=$1
     TOKEN=$2
-    echo $1 $2
 # Init service file
 sudo cat > /etc/systemd/system/expose-lnbits.service << EOF
 [Unit]
@@ -79,13 +78,14 @@ sudo systemctl enable expose-lnbits.service
 
 # Start new systemd service
 echo "Starting new systemd service"
-sudo service expose-lnbits start
+service expose-lnbits start
+check_service_started
 
 }
 
 function start_expose () {
     echo "Starting expose"
-    sudo service expose-lnbits start
+    check_service_started
 }
 function stop_expose () {
     echo "Stopping expose"
@@ -101,6 +101,27 @@ fi
 if [ $1 = "install" ]; then
     install_expose
 fi
+
+function check_service_started () {
+    # check if systemd service is started
+    STATUS="$(systemctl is-active --quiet expose-lnbits && echo Service is running)"
+    if [ "$STATUS" = "Service is running" ]; then
+        echo "Service is running"
+        sudo service expose-lnbits restart
+        sleep 5
+        FILTER="$(systemctl status expose-lnbits | grep https)"
+        # if filter is empty, service is not started
+        if [ -z "$FILTER" ]; then
+            echo "FAILURE : Your application was not published. run the following command and open an issue on https://github.com/johnongit/expose-lnbits-script/issues"
+            echo "sudo service expose-lnbits start"
+        else
+            echo "Your application is available at"
+            echo $FILTER
+        fi
+        
+        exit 1
+    fi
+}
 
 # Configure expose service
 if [ $1 = "configure" ]; then
